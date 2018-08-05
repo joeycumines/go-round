@@ -21,7 +21,43 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"math/big"
 )
+
+func BenchmarkParseString_maxFloat64(b *testing.B) {
+	s := String(math.MaxFloat64)
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		signbit, integer, fractional, exponential, ok := ParseString(s)
+		b.StopTimer()
+		v, err := Float64(Runes(signbit, integer, fractional, exponential, ok))
+		if err != nil {
+			b.Fatal(s, err)
+		}
+		if v != math.MaxFloat64 {
+			b.Fatal(v)
+		}
+		b.StartTimer()
+	}
+}
+
+func BenchmarkBigFloatSetString_maxFloat64(b *testing.B) {
+	s := String(math.MaxFloat64)
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		f, ok := new(big.Float).
+			SetString(s)
+		b.StopTimer()
+		if !ok {
+			b.Fatal(f, ok)
+		}
+		v, _ := f.Float64()
+		if v != math.MaxFloat64 {
+			b.Fatal(v)
+		}
+		b.StartTimer()
+	}
+}
 
 func ExampleParse_valid() {
 	printParse := func(v interface{}) {
