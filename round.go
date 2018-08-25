@@ -19,12 +19,12 @@
 package round
 
 import (
+	"errors"
+	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
-	"strconv"
-	"regexp"
-	"fmt"
-	"errors"
 )
 
 const (
@@ -37,6 +37,12 @@ const (
 	// (obeying the same standard) can read the formatted float64 back in exactly.
 	// https://en.wikipedia.org/wiki/Double-precision_floating-point_format#IEEE_754_double-precision_binary_floating-point_format:_binary64
 	FormatFloat64 = `%.17g`
+
+	// MinExponentFloat64 is the smallest valid exponent (biased) in IEEE 754 binary64 format
+	MinExponentFloat64 = -1022
+
+	// MaxExponentFloat64 is the largest valid exponent (biased) in IEEE 754 binary64 format
+	MaxExponentFloat64 = 1023
 )
 
 // String converts a value to a string, handling special cases for floating points in order to apply FormatFloat32 and
@@ -285,6 +291,24 @@ func ParseString(s string) (signbit bool, integer string, fractional string, exp
 	// we are done!
 	return
 }
+
+// EnsureExponent return a func that will set ok to false if the exponential part is not within the provided range
+// (inclusive)
+func EnsureExponent(min, max int) func(signbit bool, integer string, fractional string, exponential int, ok bool) (bool, string, string, int, bool) {
+	return func(signbit bool, integer string, fractional string, exponential int, ok bool) (bool, string, string, int, bool) {
+		if exponential < min || exponential > max {
+			ok = false
+		}
+		return signbit, integer, fractional, exponential, ok
+	}
+}
+
+// EnsureExponentFloat64 is EnsureExponent(MinExponentFloat64, MaxExponentFloat64)
+func EnsureExponentFloat64(signbit bool, integer string, fractional string, exponential int, ok bool) (bool, string, string, int, bool) {
+	return ensureExponentFloat64(signbit, integer, fractional, exponential, ok)
+}
+
+var ensureExponentFloat64 = EnsureExponent(MinExponentFloat64, MaxExponentFloat64)
 
 // Decimal rounds a value to n decimal places, supporting any value that can be parsed using a call
 // like Parse(String(value)), and returns it as a string, or false if parsing failed, normalising

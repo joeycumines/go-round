@@ -17,11 +17,11 @@
 package round
 
 import (
-	"testing"
 	"fmt"
 	"math"
-	"math/rand"
 	"math/big"
+	"math/rand"
+	"testing"
 )
 
 func BenchmarkParseString_maxFloat64(b *testing.B) {
@@ -604,5 +604,60 @@ func TestFloat32_errors(t *testing.T) {
 
 	if f, err := Float32(Runes(Parse(math.Inf(-1)))); f != 0 || err == nil {
 		t.Error(f, err)
+	}
+}
+
+func TestEnsureExponentFloat64(t *testing.T) {
+	type TestCase struct {
+		E int
+		O bool
+	}
+
+	testCases := []TestCase{
+		{
+			E: 0,
+			O: true,
+		},
+		{
+			E: -1022,
+			O: true,
+		},
+		{
+			E: -1023,
+			O: false,
+		},
+		{
+			E: 1023,
+			O: true,
+		},
+		{
+			E: 1024,
+			O: false,
+		},
+	}
+
+	for i, testCase := range testCases {
+		name := fmt.Sprintf("TestEnsureExponentFloat64_#%d", i+1)
+
+		signbit, integer, fractional, exponential, ok := EnsureExponentFloat64(true, "2141", "7452", testCase.E, true)
+
+		if !signbit || integer != "2141" || fractional != "7452" || exponential != testCase.E {
+			t.Error(name, "bad passthrough", signbit, integer, fractional, exponential, ok)
+		}
+
+		if testCase.O != ok {
+			t.Error(name, "bad ok", signbit, integer, fractional, exponential, ok)
+		}
+	}
+}
+
+func TestEnsureExponentFloat64_bounds(t *testing.T) {
+	d, err := Float64(Apply(Runes(EnsureExponentFloat64(ParseString(String(math.SmallestNonzeroFloat64)))))(2000))
+	if err != nil || d != math.SmallestNonzeroFloat64 {
+		t.Fatal(d, err)
+	}
+	d, err = Float64(Apply(Runes(EnsureExponentFloat64(ParseString(String(math.MaxFloat64)))))(0))
+	if err != nil || d != math.MaxFloat64 {
+		t.Fatal(d, err)
 	}
 }
